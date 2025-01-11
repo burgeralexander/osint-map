@@ -2,3 +2,5 @@ node_modules/
 uploads/
 *.log
 downloads/
+yolov5/
+yolov8n.pt
