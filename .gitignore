@@ -4,3 +4,4 @@ uploads/
 downloads/
 yolov5/
 yolov8n.pt
+*.swp
