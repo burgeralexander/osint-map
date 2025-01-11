@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leaflet Map Test</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 15px;
+    }
+
+    h1 {
+      margin: 15px 0;
+    }
+
+    #map {
+      width: 100%;
+      height: 80vh;
+      margin-bottom: 10px;
+    }
+
+    #save-button {
+      margin: 10px 0;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Real-Time Map</h1>
+  <div id="map"></div>
+  <button id="save-button">Save Map as Image</button>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
+  <script>
+    // Initialize the map centered on Vienna
+    const map = L.map('map').setView([48.2082, 16.3738], 13);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap',
+    }).addTo(map);
+
+    // WebSocket connection
+    const ws = new WebSocket('ws://localhost:4001');
+    
+    const customIcon = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      shadowSize: [41, 41],
+      shadowAnchor: [12, 41],
+    });
+    
+    // Handle incoming WebSocket messages
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const { lat, lon, probability, image, detections } = data;
+
+        const detectionsList = Array.isArray(detections) ? detections.join(', ') : 'None';
+
+        const popupContent = `
+          <strong>Marker at (${lat}, ${lon})</strong><br>
+          Probability: ${probability || 'N/A'}<br>
+          Detections: ${detectionsList}<br>
+          ${image ? `<img src="${image}" alt="Detection Image" style="max-width:100px;"/>` : ''}
+        `;
+
+        L.marker([lat, lon], { icon: customIcon }) // Add custom icon
+          .addTo(map)
+          .bindPopup(popupContent)
+          .openPopup();
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    };
+
+    // Handle WebSocket connection errors
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    // Save map as image
+    document.getElementById('save-button').addEventListener('click', () => {
+      leafletImage(map, function(err, canvas) {
+        if (err) {
+          console.error('Error generating map image:', err);
+          return;
+        }
+        const img = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = img;
+        link.download = 'map.png';
+        link.click();
+      });
+    });
+  </script>
+</body>
+</html>
+
